@@ -2,8 +2,8 @@ const EventCard = ({ event }) => {
   const { poster, title, club, date, venue, registrationLink, status } = event;
 
   return (
-    <article className="group overflow-hidden rounded-xl border bg-white p-4 shadow-sm hover:shadow-lg transition-shadow duration-200">
-      <img src={poster || 'https://via.placeholder.com/400x220?text=No+Poster'} alt={title} className="h-44 w-full object-cover rounded-lg" />
+    <article className="group overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]">
+      <img src={poster || 'https://via.placeholder.com/400x220?text=No+Poster'} alt={title} className="h-44 w-full object-cover rounded-lg transition-all duration-300 group-hover:scale-105" />
       <div className="mt-4">
         <p className="text-xs uppercase tracking-widest text-slate-500">{club}</p>
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>

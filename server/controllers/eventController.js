@@ -1,5 +1,7 @@
 const Event = require('../models/Event');
 
+const CLUB_OPTIONS = ['Cultural Club', 'Literary Club', 'Sports Club', 'NSS Club', 'CSE Association'];
+
 const computeStatus = (dateString, timeString) => {
   const eventDate = new Date(`${dateString}T${timeString}`);
   const now = new Date();
@@ -29,6 +31,10 @@ exports.createEvent = async (req, res) => {
 
     if (!title || !description || !club || !date || !time || !venue) {
       return res.status(400).json({ message: 'Missing required event fields' });
+    }
+
+    if (!CLUB_OPTIONS.includes(club)) {
+      return res.status(400).json({ message: 'Invalid club selection' });
     }
 
     const status = computeStatus(date, time);
@@ -67,6 +73,11 @@ exports.updateEvent = async (req, res) => {
     }
 
     const updates = req.body;
+
+    if (updates.club && !CLUB_OPTIONS.includes(updates.club)) {
+      return res.status(400).json({ message: 'Invalid club selection' });
+    }
+
     Object.assign(event, updates);
     if (updates.date || updates.time) {
       event.status = computeStatus(event.date, event.time);
@@ -91,6 +102,52 @@ exports.deleteEvent = async (req, res) => {
 
     await event.remove();
     res.json({ message: 'Event deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.uploadGalleryImage = async (req, res) => {
+  try {
+    const { eventId, poster, title, club } = req.body;
+
+    if (!poster) {
+      return res.status(400).json({ message: 'Poster image URL is required' });
+    }
+
+    if (eventId) {
+      const event = await Event.findById(eventId);
+      if (!event) return res.status(404).json({ message: 'Event not found' });
+
+      if (req.user.role === 'club_associate' && event.club !== req.user.club) {
+        return res.status(403).json({ message: 'Cannot upload gallery image for non-club event' });
+      }
+
+      event.poster = poster;
+      event.status = 'past';
+      await event.save();
+      return res.json({ message: 'Gallery image updated', event });
+    }
+
+    if (!title || !club) {
+      return res.status(400).json({ message: 'Title and club are required for new gallery entry' });
+    }
+
+    const galleryEvent = await Event.create({
+      title,
+      description: 'Gallery upload by ' + req.user.name,
+      club,
+      date: new Date().toISOString().slice(0, 10),
+      time: '00:00',
+      venue: 'Gallery',
+      poster,
+      registrationLink: '',
+      status: 'past',
+      createdBy: req.user._id,
+    });
+
+    res.status(201).json({ message: 'Gallery image created', galleryEvent });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

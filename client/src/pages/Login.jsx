@@ -7,8 +7,23 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [role, setRole] = useState('student');
   const { saveToken } = useAuth();
   const navigate = useNavigate();
+
+  const quickFill = (selected) => {
+    setRole(selected);
+    if (selected === 'admin') {
+      setEmail('minj6998@gmail.com');
+      setPassword('adminccet12');
+    } else if (selected === 'club_associate') {
+      setEmail('associate@example.com');
+      setPassword('assocpass');
+    } else {
+      setEmail('student@example.com');
+      setPassword('studentpass');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +40,14 @@ const Login = () => {
   return (
     <div className="mx-auto max-w-md rounded-xl bg-white p-8 shadow-lg">
       <h2 className="text-2xl font-semibold">Login</h2>
+      <p className="mt-3 text-sm text-slate-500">Choose your role and credentials</p>
+
+      <div className="mt-4 flex gap-2">
+        <button type="button" onClick={() => quickFill('admin')} className={`rounded px-3 py-1 text-sm ${role === 'admin' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Admin Login</button>
+        <button type="button" onClick={() => quickFill('club_associate')} className={`rounded px-3 py-1 text-sm ${role === 'club_associate' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Club Associate</button>
+        <button type="button" onClick={() => quickFill('student')} className={`rounded px-3 py-1 text-sm ${role === 'student' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Student</button>
+      </div>
+
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <input className="w-full rounded-md border p-2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />

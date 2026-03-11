@@ -8,11 +8,14 @@ const Navbar = () => {
     <nav className="bg-white shadow-md">
       <div className="container mx-auto flex flex-wrap items-center justify-between p-4">
         <Link to="/" className="font-bold text-xl text-brand-primary">
-          CCEMS
+          CCET Events
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <NavLink to="/" className={({ isActive }) => isActive ? 'text-brand-primary font-semibold' : 'hover:text-brand-primary'}>Home</NavLink>
           <NavLink to="/events" className={({ isActive }) => isActive ? 'text-brand-primary font-semibold' : 'hover:text-brand-primary'}>Events</NavLink>
+          <NavLink to="/clubs" className={({ isActive }) => isActive ? 'text-brand-primary font-semibold' : 'hover:text-brand-primary'}>Clubs</NavLink>
           <NavLink to="/gallery" className={({ isActive }) => isActive ? 'text-brand-primary font-semibold' : 'hover:text-brand-primary'}>Gallery</NavLink>
+          <a href="https://ccetbhilai.ac.in/" target="_blank" rel="noreferrer" className="rounded-md bg-brand-secondary px-3 py-1 text-white hover:opacity-90">Visit CCET Official Website</a>
           {user ? (
             <>
               <NavLink to="/dashboard" className="hover:text-brand-primary">Dashboard</NavLink>

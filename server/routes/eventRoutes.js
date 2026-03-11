@@ -9,7 +9,8 @@ const {
   deleteEvent,
 } = require('../controllers/eventController');
 
-router.get('/', authMiddleware, getEvents);
+// public route so even logged-out students can discover events
+router.get('/', getEvents);
 router.post('/', authMiddleware, roleMiddleware(['admin', 'club_associate']), createEvent);
 router.put('/:id', authMiddleware, roleMiddleware(['admin', 'club_associate']), updateEvent);
 router.delete('/:id', authMiddleware, roleMiddleware(['admin']), deleteEvent);

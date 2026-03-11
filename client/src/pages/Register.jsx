@@ -43,10 +43,8 @@ const Register = () => {
         <input className="w-full rounded-md border p-2" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
         <input className="w-full rounded-md border p-2" value={email} type="email" onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
         <input className="w-full rounded-md border p-2" value={password} type="password" onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-        <select className="w-full rounded-md border p-2" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="student">Student</option>
-          <option value="club_associate">Club Associate</option>
-        </select>
+        <input className="w-full rounded-md border p-2 bg-slate-100" value="Student" disabled />
+        <p className="text-xs text-slate-500">Role is fixed to Student; club associates are created by Admin.</p>
         <input className="w-full rounded-md border p-2" value={club} onChange={(e) => setClub(e.target.value)} placeholder="Club (optional)" />
         <button className="w-full rounded-md bg-brand-primary py-2 text-white hover:bg-blue-700" type="submit">Register</button>
       </form>

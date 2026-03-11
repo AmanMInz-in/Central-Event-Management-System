@@ -8,10 +8,14 @@ const createToken = (userId) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, club } = req.body;
+    let { name, email, password, role, club } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    if (role && (role === 'club_associate' || role === 'admin')) {
+      return res.status(403).json({ message: 'Cannot assign admin or club associate during registration' });
     }
 
     const existingUser = await User.findOne({ email });
@@ -19,8 +23,10 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Email already in use' });
     }
 
+    role = 'student';
+
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed, role: role || 'student', club: club || '' });
+    const user = await User.create({ name, email, password: hashed, role, club: club || '' });
 
     const token = createToken(user._id);
 
@@ -58,6 +64,35 @@ exports.login = async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email, role: user.role, club: user.club },
       token,
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.seedAdmin = async (req, res) => {
+  try {
+    const existing = await User.findOne({ email: 'minj6998@gmail.com' });
+    const hashedPassword = await bcrypt.hash('adminccet12', 10);
+
+    if (existing) {
+      existing.password = hashedPassword;
+      existing.role = 'admin';
+      existing.name = 'Default Admin';
+      existing.club = '';
+      await existing.save();
+      return res.status(200).json({ message: 'Admin user reset with default credentials' });
+    }
+
+    await User.create({
+      name: 'Default Admin',
+      email: 'minj6998@gmail.com',
+      password: hashedPassword,
+      role: 'admin',
+      club: '',
+    });
+
+    res.status(201).json({ message: 'Default admin user created' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
