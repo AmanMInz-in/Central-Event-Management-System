@@ -34,3 +34,5 @@ Full stack MERN application with:
 ## Notes
 - Use MongoDB Atlas for `MONGO_URI`.
 - Deploy front-end to Netlify/Vercel and back-end to Render/Railway.
+
+https://central-event-management-system.vercel.app/
