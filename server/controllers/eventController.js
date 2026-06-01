@@ -100,7 +100,7 @@ exports.deleteEvent = async (req, res) => {
       return res.status(403).json({ message: 'Only admin can delete events' });
     }
 
-    await event.remove();
+    await Event.findByIdAndDelete(req.params.id);
     res.json({ message: 'Event deleted' });
   } catch (error) {
     console.error(error);

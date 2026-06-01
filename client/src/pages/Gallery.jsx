@@ -47,30 +47,36 @@ const Gallery = () => {
   };
 
   return (
-    <section>
-      <h1 className="text-3xl font-bold">Event Gallery</h1>
-      <p className="mt-2 text-slate-600">Browse images from past events.</p>
+    <section className="space-y-8">
+      <div className="space-y-3">
+        <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Gallery</p>
+        <h1 className="h1">Browse event highlights and club moments</h1>
+        <p className="text-slate-400 max-w-2xl">A curated collection of campaign images, posters, and campus highlights.</p>
+      </div>
 
       {(user?.role === 'admin' || user?.role === 'club_associate') && (
-        <div className="mt-5 rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="text-xl font-semibold">Upload Gallery Image</h3>
-          <form onSubmit={handleUpload} className="grid gap-2 md:grid-cols-2 mt-3">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" className="rounded border p-2" required />
-            <input value={poster} onChange={(e) => setPoster(e.target.value)} placeholder="Poster image URL" className="rounded border p-2" required />
-            <input value={club} onChange={(e) => setClub(e.target.value)} placeholder="Club name" className="rounded border p-2" required />
-            <button type="submit" className="rounded bg-brand-primary px-4 py-2 text-white">Upload</button>
+        <div className="card p-6">
+          <div className="space-y-3">
+            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Upload media</p>
+            <h3 className="text-xl font-semibold text-white">Add a new gallery poster</h3>
+          </div>
+          <form onSubmit={handleUpload} className="grid gap-4 md:grid-cols-2 mt-6">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" className="input-base" required />
+            <input value={poster} onChange={(e) => setPoster(e.target.value)} placeholder="Poster image URL" className="input-base" required />
+            <input value={club} onChange={(e) => setClub(e.target.value)} placeholder="Club name" className="input-base" required />
+            <button type="submit" className="btn btn-primary px-6 py-3">Upload</button>
           </form>
-          {uploadMessage && <p className="mt-2 text-sm text-brand-primary">{uploadMessage}</p>}
+          {uploadMessage && <p className="mt-3 text-sm text-brand-primary">{uploadMessage}</p>}
         </div>
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {gallery.map((item) => (
-          <div key={item._id} className="overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]">
+          <div key={item._id} className="overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/90 shadow-[0_20px_60px_rgba(15,23,42,0.22)] transition-all duration-300 hover:shadow-[0_32px_90px_rgba(15,23,42,0.28)] hover:-translate-y-1 hover:scale-[1.01]">
             <img src={item.poster || 'https://via.placeholder.com/400x250?text=Event+Photo'} alt={item.title || 'Event poster'} className="h-56 w-full object-cover transition-all duration-300 hover:scale-105" />
             <div className="p-3">
-              <h3 className="font-semibold">{item.title}</h3>
-              <p className="text-sm text-slate-500">{item.club}</p>
+              <h3 className="font-semibold text-white">{item.title}</h3>
+              <p className="text-sm text-slate-400">{item.club}</p>
             </div>
           </div>
         ))}

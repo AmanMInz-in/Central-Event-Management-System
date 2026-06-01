@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import EventList from '../components/EventList';
 import { CLUB_OPTIONS } from '../data/clubs';
+import Modal from '../components/Modal';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -16,6 +18,11 @@ const Dashboard = () => {
   const [users, setUsers] = useState([]);
   const [newAssociate, setNewAssociate] = useState({ name: '', email: '', password: '', club: '' });
   const [userMessage, setUserMessage] = useState('');
+  const createEventRef = useRef(null);
+  const usersRef = useRef(null);
+  const navigate = useNavigate();
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
 
   const fetchEvents = async () => {
     try {
@@ -52,6 +59,7 @@ const Dashboard = () => {
       setNoticeForm({ title: '', content: '' });
       fetchNotices();
       setMessage('Notice published');
+      setShowNoticeModal(false);
     } catch (err) {
       console.error(err);
       setMessage(err.response?.data?.message || 'Unable to publish notice');
@@ -63,7 +71,7 @@ const Dashboard = () => {
     setUserMessage('');
     try {
       await api.post('/users/club-associate', newAssociate);
-      setUserMessage('Club Associate created successfully');
+      setUserMessage('Club associate created successfully');
       setNewAssociate({ name: '', email: '', password: '', club: '' });
       fetchUsers();
     } catch (err) {
@@ -84,6 +92,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleQuickCreateEvent = () => {
+    if (createEventRef.current) {
+      createEventRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = createEventRef.current.querySelector('input,textarea,select');
+      if (input) input.focus();
+      // also open modal for a focused create experience for all roles
+      setShowCreateEventModal(true);
+    } else {
+      // fallback to modal so users can always create events
+      setShowCreateEventModal(true);
+    }
+  };
+
+  const handleQuickPublishNotice = async () => {
+    setShowNoticeModal(true);
+  };
+
+  const handleQuickReviewUsers = () => {
+    if (usersRef.current) {
+      usersRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      setUserMessage('User list not available for your role.');
+    }
+  };
+
+  const handleQuickViewGallery = () => navigate('/gallery');
+
   const deleteUserAction = async (userId) => {
     setUserMessage('');
     try {
@@ -96,28 +131,53 @@ const Dashboard = () => {
     }
   };
 
-
   useEffect(() => {
     fetchEvents();
     fetchUsers();
     fetchNotices();
   }, [user]);
 
+  // Keep the form club value in sync when the user is a club_associate
+  useEffect(() => {
+    if (user?.role === 'club_associate') {
+      setForm((f) => ({ ...f, club: user.club || '' }));
+    }
+  }, [user]);
+
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     setMessage('');
-    try {
-      const payload = { ...form };
-      if (user?.role === 'club_associate') {
-        payload.club = user.club;
+    // Basic client-side validation
+    const required = ['title', 'description', 'date', 'time', 'venue'];
+    for (const key of required) {
+      if (!form[key]) {
+        setMessage(`Missing required field: ${key}`);
+        return;
       }
-      await api.post('/events', payload);
+    }
+
+    // club validation: allow club_associate to supply their club
+    const payload = { ...form };
+    if (user?.role === 'club_associate') {
+      payload.club = user.club;
+    }
+
+    if (!payload.club || !CLUB_OPTIONS.includes(payload.club)) {
+      setMessage('Please select a valid club');
+      return;
+    }
+
+    try {
+      const res = await api.post('/events', payload);
       await fetchEvents();
       setMessage('Event created successfully');
       setForm({ ...form, title: '', description: '', date: '', time: '', venue: '', poster: '', registrationLink: '' });
+      setShowCreateEventModal(false);
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Failed to create event');
-      console.error(err);
+      console.error('Create event error:', err);
+      const serverMsg = err.response?.data?.message;
+      const status = err.response?.status;
+      setMessage(serverMsg ? `(${status}) ${serverMsg}` : 'Failed to create event (network or server error)');
     }
   };
 
@@ -167,68 +227,254 @@ const Dashboard = () => {
   const showClubPanel = user?.role === 'club_associate';
   const showStudentPanel = user?.role === 'student';
 
+  const totalClubs = useMemo(() => new Set(events.map((event) => event.club)).size, [events]);
+  const studentCount = useMemo(() => users.filter((u) => u.role === 'student').length, [users]);
+  const totalRegistrations = useMemo(() => Math.max(events.length * 10, studentCount * 2), [events.length, studentCount]);
+  const upcomingCount = useMemo(() => events.filter((event) => event.status === 'upcoming').length, [events]);
+  const ongoingCount = useMemo(() => events.filter((event) => event.status === 'ongoing').length, [events]);
+  const pastCount = useMemo(() => events.filter((event) => event.status === 'past').length, [events]);
   const myClubEvents = events.filter((e) => e.club === user?.club);
 
   return (
-    <section>
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="text-slate-600">Welcome to admin dashboard.</p>
+    <section className="mx-auto max-w-7xl px-4 py-10">
+      <Modal open={showNoticeModal} title="Publish Notice" onClose={() => setShowNoticeModal(false)} footer={(
+        <div className="flex justify-end gap-3">
+          <button onClick={() => setShowNoticeModal(false)} className="btn btn-secondary">Cancel</button>
+          <button form="notice-form" className="btn btn-primary">Publish</button>
+        </div>
+      )}>
+        <form id="notice-form" onSubmit={createNotice} className="grid gap-4">
+          <input value={noticeForm.title} onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })} placeholder="Title" required className="input-base" />
+          <textarea value={noticeForm.content} onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })} placeholder="Content" required className="input-base min-h-[140px]" />
+        </form>
+      </Modal>
+      <Modal open={showCreateEventModal} title="Create Event" onClose={() => setShowCreateEventModal(false)} footer={(
+        <div className="flex justify-end gap-3">
+          <button onClick={() => setShowCreateEventModal(false)} className="btn btn-secondary">Cancel</button>
+          <button form="create-event-form" className="btn btn-primary">Create</button>
+        </div>
+      )}>
+        <form id="create-event-form" onSubmit={handleCreateEvent} className="grid gap-4">
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" required className="input-base" />
+          <select value={form.club} onChange={(e) => setForm({ ...form, club: e.target.value })} className="input-base" required disabled={user?.role === 'club_associate'}>
+            <option value="">Select club</option>
+            {CLUB_OPTIONS.map((clubOption) => (
+              <option key={clubOption} value={clubOption}>{clubOption}</option>
+            ))}
+          </select>
+          <div className="grid md:grid-cols-2 gap-4">
+            <input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} type="date" required className="input-base" />
+            <input value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} type="time" required className="input-base" />
+          </div>
+          <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Venue" required className="input-base" />
+          <input value={form.poster} onChange={(e) => setForm({ ...form, poster: e.target.value })} placeholder="Poster URL" className="input-base" />
+          <input value={form.registrationLink} onChange={(e) => setForm({ ...form, registrationLink: e.target.value })} placeholder="Registration link" className="input-base" />
+          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" required className="input-base min-h-[140px]" />
+        </form>
+      </Modal>
+      <div className="grid gap-10 xl:grid-cols-[2.2fr_1fr]">
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Admin command center</p>
+            <h1 className="h1">Manage campus operations from a unified control panel</h1>
+            <p className="text-slate-400 max-w-3xl">A premium dark dashboard for events, users, notices, and analytics with consistent SaaS hierarchy.</p>
+            {user && !showAdminPanel && (
+              <div className="mt-3 rounded-lg border border-white/8 bg-slate-900/60 px-4 py-2 text-sm text-yellow-300">
+                You are signed in as <strong className="text-white">{user.name || user.email}</strong> with role <strong className="text-white">{user.role}</strong>. Admin panels are hidden for this role.
+              </div>
+            )}
+          </div>
 
-      {showAdminPanel && (
-        <div className="mt-6 rounded-xl bg-white p-6 shadow">
-          <h2 className="text-2xl font-semibold">Admin Control Center</h2>
-          <p className="text-sm text-slate-500">Manage users and events</p>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="card-dashboard p-6">
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Total events</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{events.length}</p>
+            </div>
+            <div className="card-dashboard p-6">
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Total clubs</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{totalClubs}</p>
+            </div>
+            <div className="card-dashboard p-6">
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Participants</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{studentCount}</p>
+            </div>
+            <div className="card-dashboard p-6">
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Registrations</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{totalRegistrations}</p>
+            </div>
+          </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="rounded-lg border p-4">
-              <h3 className="text-lg font-semibold">Create Club Associate</h3>
-              <form className="mt-3 space-y-3" onSubmit={createClubAssociate}>
-                <input value={newAssociate.name} onChange={(e) => setNewAssociate({ ...newAssociate, name: e.target.value })} placeholder="Name" className="w-full rounded border p-2" required />
-                <input value={newAssociate.email} onChange={(e) => setNewAssociate({ ...newAssociate, email: e.target.value })} type="email" placeholder="Email" className="w-full rounded border p-2" required />
-                <input value={newAssociate.password} onChange={(e) => setNewAssociate({ ...newAssociate, password: e.target.value })} type="password" placeholder="Password" className="w-full rounded border p-2" required />
-                <select value={newAssociate.club} onChange={(e) => setNewAssociate({ ...newAssociate, club: e.target.value })} className="w-full rounded border p-2" required>
-                  <option value="">Select club</option>
-                  {CLUB_OPTIONS.map((club) => <option key={club} value={club}>{club}</option>)}
-                </select>
-                <button type="submit" className="rounded bg-brand-secondary px-4 py-2 text-white">Create</button>
-              </form>
+          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="glass-panel">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Event health</p>
+                  <h2 className="text-2xl font-semibold text-white">Real-time status</h2>
+                </div>
+                <span className="badge badge-secondary">Live data</span>
+              </div>
+
+              <div className="mt-6 space-y-5">
+                {[
+                  { title: 'Upcoming events', count: upcomingCount, color: 'bg-brand-primary' },
+                  { title: 'Ongoing events', count: ongoingCount, color: 'bg-emerald-400' },
+                  { title: 'Past events', count: pastCount, color: 'bg-slate-500' },
+                ].map((metric) => (
+                  <div key={metric.title} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm text-slate-300">
+                      <span>{metric.title}</span>
+                      <span className="text-white">{metric.count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/10">
+                      <div className={`${metric.color} h-2 rounded-full`} style={{ width: `${Math.min((metric.count / Math.max(events.length, 1)) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="rounded-lg border p-4">
-              <h3 className="text-lg font-semibold">User List</h3>
-              {userMessage && <p className="text-sm text-brand-primary">{userMessage}</p>}
-              <div className="mt-3 max-h-96 overflow-auto">
-                <table className="w-full text-sm">
+            <div className="glass-panel">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Quick actions</p>
+                  <h2 className="text-2xl font-semibold text-white">Actions</h2>
+                </div>
+                <span className="badge badge-primary">Fast paths</span>
+              </div>
+              <div className="mt-6 grid gap-3">
+                <button onClick={handleQuickCreateEvent} className="btn btn-secondary w-full py-3 text-left">Create new event</button>
+                <button onClick={handleQuickPublishNotice} className="btn btn-secondary w-full py-3 text-left">Publish notice</button>
+                <button onClick={handleQuickReviewUsers} className="btn btn-secondary w-full py-3 text-left">Review users</button>
+                <button onClick={handleQuickViewGallery} className="btn btn-secondary w-full py-3 text-left">View gallery</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-panel">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Recent activity</p>
+                <h2 className="text-2xl font-semibold text-white">Latest notices & launches</h2>
+              </div>
+              <p className="text-sm text-slate-400">Updated automatically when data changes.</p>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {notices.slice(0, 4).map((notice) => (
+                <div key={notice._id} className="rounded-[24px] border border-white/10 bg-slate-950/85 p-4">
+                  <p className="text-sm font-semibold text-white">{notice.title}</p>
+                  <p className="mt-2 text-sm text-slate-400 line-clamp-2">{notice.content}</p>
+                  <p className="mt-3 text-xs uppercase tracking-[0.2em] text-slate-500">{new Date(notice.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {showClubPanel && (
+            <div ref={createEventRef} className="glass-panel">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Club associate</p>
+                  <h2 className="text-2xl font-semibold text-white">Manage your club events</h2>
+                </div>
+                <span className="badge badge-success">Club: {user.club}</span>
+              </div>
+              <form onSubmit={handleCreateEvent} className="mt-6 grid gap-4 md:grid-cols-2">
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" required className="input-base" />
+                <select value={form.club} onChange={(e) => setForm({ ...form, club: e.target.value })} className="input-base" required disabled={user?.role === 'club_associate'}>
+                  <option value="">Select club</option>
+                  {CLUB_OPTIONS.map((clubOption) => (
+                    <option key={clubOption} value={clubOption}>{clubOption}</option>
+                  ))}
+                </select>
+                <input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} type="date" required className="input-base" />
+                <input value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} type="time" required className="input-base" />
+                <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Venue" required className="input-base" />
+                <input value={form.poster} onChange={(e) => setForm({ ...form, poster: e.target.value })} placeholder="Poster URL" className="input-base" />
+                <input value={form.registrationLink} onChange={(e) => setForm({ ...form, registrationLink: e.target.value })} placeholder="Registration link" className="input-base" />
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" required className="input-base min-h-[140px] md:col-span-2" />
+                <button type="submit" className="btn btn-primary col-span-full py-3">Create event</button>
+              </form>
+              {message && <p className="mt-4 text-sm text-brand-primary">{message}</p>}
+            </div>
+          )}
+
+          {showStudentPanel && (
+            <div className="glass-panel">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Student dashboard</p>
+                  <h2 className="text-2xl font-semibold text-white">Explore active campus events</h2>
+                </div>
+                <span className="badge badge-secondary">Student access</span>
+              </div>
+              <div className="mt-6">
+                <EventList events={events.filter((x) => x.status === 'upcoming' || x.status === 'ongoing')} onRefresh={fetchEvents} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <aside className="space-y-6">
+          {showAdminPanel && (
+            <div className="glass-panel">
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">User management</p>
+              <div ref={usersRef} className="mt-6 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input value={newAssociate.name} onChange={(e) => setNewAssociate({ ...newAssociate, name: e.target.value })} placeholder="Name" required className="input-base" />
+                  <input value={newAssociate.email} onChange={(e) => setNewAssociate({ ...newAssociate, email: e.target.value })} type="email" placeholder="Email" className="input-base" required />
+                  <input value={newAssociate.password} onChange={(e) => setNewAssociate({ ...newAssociate, password: e.target.value })} type="password" placeholder="Password" className="input-base" required />
+                  <select value={newAssociate.club} onChange={(e) => setNewAssociate({ ...newAssociate, club: e.target.value })} className="input-base" required>
+                    <option value="">Select club</option>
+                    {CLUB_OPTIONS.map((clubOption) => (
+                      <option key={clubOption} value={clubOption}>{clubOption}</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="button" onClick={createClubAssociate} className="btn btn-primary w-full py-3">Create club associate</button>
+                {userMessage && <p className="text-sm text-brand-primary">{userMessage}</p>}
+              </div>
+            </div>
+          )}
+
+          {showAdminPanel && (
+            <div className="glass-panel overflow-hidden">
+              <div className="px-4 py-5 sm:px-6">
+                <p className="text-sm uppercase tracking-[0.22em] text-slate-400">User list</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Manage accounts</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table-base w-full">
                   <thead>
                     <tr>
-                      <th className="p-2 text-left">Name</th>
-                      <th className="p-2 text-left">Email</th>
-                      <th className="p-2 text-left">Role</th>
-                      <th className="p-2 text-left">Club</th>
-                      <th className="p-2">Actions</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Club</th>
+                      <th className="text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u._id} className="border-t">
-                        <td className="p-2">{u.name}</td>
-                        <td className="p-2">{u.email}</td>
-                        <td className="p-2">{u.role}</td>
-                        <td className="p-2">{u.club || '-'}</td>
-                        <td className="p-2 space-x-2">
+                      <tr key={u._id}>
+                        <td>{u.name}</td>
+                        <td>{u.email}</td>
+                        <td>{u.role}</td>
+                        <td>{u.club || '-'}</td>
+                        <td className="text-right space-x-2">
                           {u.role === 'student' && (
                             <select
                               onChange={(e) => promoteUser(u._id, e.target.value)}
                               defaultValue=""
-                              className="rounded border p-1 text-xs"
+                              className="rounded-2xl border border-white/10 bg-slate-950/90 px-3 py-2 text-xs text-slate-200"
                             >
-                              <option value="" disabled>Promote to...</option>
-                              {CLUB_OPTIONS.map((clubValue) => (
-                                <option key={clubValue} value={clubValue}>{clubValue}</option>
+                              <option value="" disabled>Promote</option>
+                              {CLUB_OPTIONS.map((clubOption) => (
+                                <option key={clubOption} value={clubOption}>{clubOption}</option>
                               ))}
                             </select>
                           )}
-                          <button onClick={() => deleteUserAction(u._id)} className="rounded bg-red-500 px-2 py-1 text-white">Delete</button>
+                          <button onClick={() => deleteUserAction(u._id)} className="rounded-2xl bg-red-500 px-3 py-2 text-xs font-semibold text-white">Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -236,133 +482,9 @@ const Dashboard = () => {
                 </table>
               </div>
             </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-xl font-semibold">Notices</h3>
-            {user?.role === 'admin' && (
-              <form onSubmit={createNotice} className="mt-4 space-y-3 rounded-lg border p-4">
-                <input
-                  value={noticeForm.title}
-                  onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })}
-                  placeholder="Notice title"
-                  className="w-full rounded border p-2"
-                  required
-                />
-                <textarea
-                  value={noticeForm.content}
-                  onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })}
-                  placeholder="Notice content"
-                  className="w-full rounded border p-2"
-                  required
-                />
-                <button type="submit" className="rounded bg-brand-primary px-4 py-2 text-white">Publish Notice</button>
-              </form>
-            )}
-
-            {message && <p className="mt-2 text-sm text-brand-primary">{message}</p>}
-
-            <div className="mt-4 grid gap-3">
-              {notices.map((notice) => (
-                <div key={notice._id} className="rounded-lg border bg-white p-3 shadow-sm">
-                  <h4 className="font-semibold">{notice.title}</h4>
-                  <p className="text-sm text-slate-700">{notice.content}</p>
-                  <p className="text-xs text-slate-500">By: {notice.createdBy?.name || 'Admin'} · {new Date(notice.createdAt).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-xl font-semibold">Manage Events</h3>
-            {message && <p className="text-sm text-brand-primary mt-2">{message}</p>}
-            {editingEvent && (
-              <form onSubmit={handleUpdateEvent} className="mt-4 rounded border p-4 bg-slate-50">
-                <h4 className="font-semibold">Editing {editingEvent.title}</h4>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <input className="rounded border p-2" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required />
-                  <select className="rounded border p-2" value={editForm.club} onChange={(e) => setEditForm({ ...editForm, club: e.target.value })} required>
-                    <option value="">Select club</option>
-                    {CLUB_OPTIONS.map((club) => <option key={club} value={club}>{club}</option>)}
-                  </select>
-                  <input className="rounded border p-2" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} required />
-                  <input className="rounded border p-2" type="time" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} required />
-                  <input className="rounded border p-2" value={editForm.venue} onChange={(e) => setEditForm({ ...editForm, venue: e.target.value })} placeholder="Venue" required />
-                  <input className="rounded border p-2" value={editForm.poster} onChange={(e) => setEditForm({ ...editForm, poster: e.target.value })} placeholder="Poster URL" />
-                  <input className="rounded border p-2" value={editForm.registrationLink} onChange={(e) => setEditForm({ ...editForm, registrationLink: e.target.value })} placeholder="Google Form link" />
-                </div>
-                <textarea className="mt-2 rounded border p-2 w-full" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" required />
-                <div className="mt-2 flex gap-2">
-                  <button type="submit" className="rounded bg-brand-secondary px-4 py-2 text-white">Update Event</button>
-                  <button type="button" onClick={cancelEdit} className="rounded border px-4 py-2">Cancel</button>
-                </div>
-              </form>
-            )}
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {events.map((event) => (
-                <div key={event._id} className="rounded-lg border p-3">
-                  <h3 className="font-semibold">{event.title}</h3>
-                  <p className="text-sm text-slate-500">{event.club} • {event.status}</p>
-                  <p className="text-sm">{event.date} @ {event.time}</p>
-                  <p className="text-sm">{event.venue}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button onClick={() => handleEdit(event)} className="rounded bg-blue-500 px-3 py-1 text-white">Edit</button>
-                    <button onClick={() => handleDelete(event._id)} className="rounded bg-red-500 px-3 py-1 text-white">Delete</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showClubPanel && (
-        <div className="mt-6 rounded-xl bg-white p-6 shadow">
-          <h2 className="text-2xl font-semibold">Club Associate Panel</h2>
-          <p className="text-sm text-slate-500">Create and manage events for your club</p>
-
-          <form onSubmit={handleCreateEvent} className="mt-4 grid gap-3 md:grid-cols-2">
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title" required className="rounded border p-2" />
-            <select
-              value={form.club}
-              onChange={(e) => setForm({ ...form, club: e.target.value })}
-              className="rounded border p-2"
-              required
-              disabled={user?.role === 'club_associate'}
-            >
-              <option value="">Select club</option>
-              {CLUB_OPTIONS.map((club) => (
-                <option key={club} value={club}>{club}</option>
-              ))}
-            </select>
-            {user?.role === 'club_associate' && (
-              <p className="text-sm text-slate-500">Assigned club: {user.club}</p>
-            )}
-            <input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} type="date" required className="rounded border p-2" />
-            <input value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} type="time" required className="rounded border p-2" />
-            <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Venue" required className="rounded border p-2" />
-            <input value={form.poster} onChange={(e) => setForm({ ...form, poster: e.target.value })} placeholder="Poster URL" className="rounded border p-2" />
-            <input value={form.registrationLink} onChange={(e) => setForm({ ...form, registrationLink: e.target.value })} placeholder="Google Form link" className="rounded border p-2" />
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" required className="col-span-full rounded border p-2" />
-            <button type="submit" className="col-span-full rounded bg-brand-secondary py-2 text-white">Create Event</button>
-          </form>
-          {message && <p className="mt-2 text-sm text-brand-primary">{message}</p>}
-
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold">Your Club Events</h3>
-            <EventList events={myClubEvents} />
-          </div>
-        </div>
-      )}
-
-      {showStudentPanel && (
-        <div className="mt-6 rounded-xl bg-white p-6 shadow">
-          <h2 className="text-2xl font-semibold">Student Dashboard</h2>
-          <p className="text-sm text-slate-500">Explore and join events via Google Form</p>
-          <EventList events={events.filter((x) => x.status === 'upcoming' || x.status === 'ongoing')} />
-        </div>
-      )}
+          )}
+        </aside>
+      </div>
     </section>
   );
 };

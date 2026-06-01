@@ -11,15 +11,18 @@ const clubDescriptions = {
 
 const Clubs = () => {
   return (
-    <section>
-      <h1 className="text-3xl font-bold">Clubs</h1>
-      <p className="mt-2 text-slate-600">Choose a club to view its upcoming events.</p>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="space-y-8">
+      <div className="space-y-3">
+        <p className="text-sm uppercase tracking-[0.24em] text-brand-primary">Clubs</p>
+        <h1 className="h1">Explore campus communities and club activities</h1>
+        <p className="text-slate-400 max-w-2xl">Select a club to browse events, announcements, and member initiatives.</p>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {CLUB_OPTIONS.map((club) => (
-          <div key={club} className="rounded-xl border bg-white p-5 shadow transition hover:-translate-y-1 hover:shadow-lg">
-            <h2 className="text-xl font-semibold">{club}</h2>
-            <p className="mt-2 text-sm text-slate-500">{clubDescriptions[club]}</p>
-            <Link to={`/events?club=${encodeURIComponent(club)}`} className="mt-4 inline-block rounded-md bg-brand-primary px-4 py-2 text-sm text-white hover:bg-blue-600">
+          <div key={club} className="card p-6 transition hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(15,23,42,0.28)]">
+            <h2 className="text-xl font-semibold text-white">{club}</h2>
+            <p className="mt-3 text-sm text-slate-400">{clubDescriptions[club]}</p>
+            <Link to={`/events?club=${encodeURIComponent(club)}`} className="mt-6 inline-flex rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-primary/90">
               View {club} Events
             </Link>
           </div>

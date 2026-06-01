@@ -14,9 +14,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-50 text-slate-900">
+      <div className="min-h-screen bg-slate-950 text-slate-100">
         <Navbar />
-        <main className="container mx-auto px-4 py-6">
+        <main className="px-0 pt-24">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

@@ -5,8 +5,18 @@ export default {
     extend: {
       colors: {
         brand: {
-          primary: '#1D4ED8',
-          secondary: '#9333EA',
+          primary: '#3B82F6',
+          secondary: '#8B5CF6',
+        },
+      },
+      animation: {
+        blob: 'blob 7s infinite',
+      },
+      keyframes: {
+        blob: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
         },
       },
     },

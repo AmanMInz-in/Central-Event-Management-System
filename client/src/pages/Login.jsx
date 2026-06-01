@@ -38,23 +38,24 @@ const Login = () => {
   };
 
   return (
-    <div className="mx-auto max-w-md rounded-xl bg-white p-8 shadow-lg">
-      <h2 className="text-2xl font-semibold">Login</h2>
-      <p className="mt-3 text-sm text-slate-500">Choose your role and credentials</p>
+    <div className="mx-auto max-w-md rounded-[28px] bg-slate-950/95 p-8 shadow-[0_40px_120px_rgba(15,23,42,0.35)]">
+      <p className="text-sm uppercase tracking-[0.22em] text-brand-primary">Nice to see you back</p>
+      <h2 className="mt-3 h2">Login to your dashboard</h2>
+      <p className="mt-3 text-sm text-slate-400">Choose your role and quick-fill credentials to continue.</p>
 
-      <div className="mt-4 flex gap-2">
-        <button type="button" onClick={() => quickFill('admin')} className={`rounded px-3 py-1 text-sm ${role === 'admin' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Admin Login</button>
-        <button type="button" onClick={() => quickFill('club_associate')} className={`rounded px-3 py-1 text-sm ${role === 'club_associate' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Club Associate</button>
-        <button type="button" onClick={() => quickFill('student')} className={`rounded px-3 py-1 text-sm ${role === 'student' ? 'bg-brand-primary text-white' : 'bg-slate-200'}`}>Student</button>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" onClick={() => quickFill('admin')} className={`pill ${role === 'admin' ? 'bg-brand-primary text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Admin Login</button>
+        <button type="button" onClick={() => quickFill('club_associate')} className={`pill ${role === 'club_associate' ? 'bg-brand-primary text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Club Associate</button>
+        <button type="button" onClick={() => quickFill('student')} className={`pill ${role === 'student' ? 'bg-brand-primary text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>Student</button>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <input className="w-full rounded-md border p-2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-        <input className="w-full rounded-md border p-2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-        <button className="w-full rounded-md bg-brand-primary py-2 text-white hover:bg-blue-700" type="submit">Login</button>
+        <input className="input-base" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
+        <input className="input-base" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
+        <button className="btn btn-primary w-full py-3" type="submit">Login</button>
       </form>
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-sm text-slate-400">
         New? <Link to="/register" className="text-brand-primary">Create an account</Link>
       </p>
     </div>
